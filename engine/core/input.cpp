@@ -1,13 +1,13 @@
 #include "input.h"
 
 InputSystem::InputSystem(GLFWwindow* win) {
+  _window = win;
+  
   if (!win) {
     error_callback("failed to initialize InputSystem: WINDOW is null.");
     exit(1);
   }
-  
-  _window = win;
-
+  glfwSetWindowUserPointer(_window, this);
   glfwSetCursorPosCallback(_window,
     [](GLFWwindow* window, double xpos, double ypos) {
       auto* input =

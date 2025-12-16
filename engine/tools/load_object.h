@@ -4,7 +4,6 @@
 #include "../core/vertex.h"
 #include "../core/transform.h"
 #include "../core/material.h"
-#include "../core/entity.h"
 #include "recs/world.h"
 #include <fstream>
 #include <sstream>
@@ -12,10 +11,11 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 namespace __TOOLS__ {
 
-static void load_obj_mesh(std::ifstream& file, Mesh& mesh) {
+static void load_obj_mesh(std::ifstream& file, Mesh& mesh, std::string& name) {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec2> texCoords;
     std::vector<glm::vec3> normals;
@@ -32,6 +32,15 @@ static void load_obj_mesh(std::ifstream& file, Mesh& mesh) {
         std::istringstream ss(line);
         std::string prefix;
         ss >> prefix;
+
+        // ============================
+        // Read mesh name
+        // ============================
+
+        if (prefix == "o" || prefix == "g") {
+            ss >> name;
+            continue;
+        }
 
         // =====================
         // Vertex position
@@ -157,7 +166,7 @@ static void load_obj_mesh(std::ifstream& file, Mesh& mesh) {
 }
 
 
-static Entity create_entity_from_mesh(World& world, const Mesh& mesh) {
+static Entity create_entity_from_mesh(World& world, const Mesh& mesh, std::string name) {
     Entity entity = world.create_entity();
     assert(world.alive(entity));
     world.add<Transform>(entity);
@@ -177,7 +186,7 @@ static Entity create_entity_from_mesh(World& world, const Mesh& mesh) {
 
     // add an identity so every entity has a name/tag/layer
     world.add<Identity>(entity);
-    world.get<Identity>(entity) = Identity("MeshEntity");
+    world.get<Identity>(entity) = Identity(name);
 
     // Construct MeshRenderer in-place using the (now centered) mesh reference
     // Do this after adding Material/Identity to avoid extra moves that can
@@ -195,7 +204,6 @@ static Entity create_entity_from_mesh(World& world, const Mesh& mesh) {
 }
 
 static Entity create_entities_from_obj(World& world, const std::string& filepath) {
-    
     std::vector<Entity> entities;
 
     std::ifstream file(filepath);
@@ -209,9 +217,10 @@ static Entity create_entities_from_obj(World& world, const std::string& filepath
 
     while (file.peek() != EOF) {
         Mesh mesh;
-        load_obj_mesh(file, mesh);
+        std::string name;
+        load_obj_mesh(file, mesh, name);
         if (!mesh.vertices.empty()) {
-            auto entity = create_entity_from_mesh(world, mesh);
+            auto entity = create_entity_from_mesh(world, mesh, name);
             assert(world.alive(entity));
             entities.push_back(entity);
         }
@@ -229,11 +238,13 @@ static Entity create_entities_from_obj(World& world, const std::string& filepath
             auto e = world.create_entity();
             assert(world.alive(e));
             world.add<Transform>(e);
-
+            std::filesystem::path p(filepath);
             
             // add family and identity to parent
             world.add<Family>(e);
             world.add<Identity>(e);
+            world.get<Identity>(e).name = p.filename().string();
+
             // set parent identity name from filepath (basename)
             std::string base = filepath;
             auto pos = base.find_last_of("/\\");

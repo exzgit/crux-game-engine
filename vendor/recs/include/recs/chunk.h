@@ -32,6 +32,10 @@ public:
         return *reinterpret_cast<T*>(component_ptr(id, row));
     }
 
+    Entity entity_at(std::size_t row) const noexcept {
+        return entity_ids[row];
+    }
+
     template<typename... Components>
     std::tuple<Components*...> get_arrays() {
         return {

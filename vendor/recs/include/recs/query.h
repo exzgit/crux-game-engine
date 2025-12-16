@@ -35,6 +35,32 @@ public:
         }
     }
 
+    template<typename... Components, typename Func>
+    void for_each_entity(Func&& fn) {
+        for (Archetype* archetype : matched) {
+            if (archetype->empty()) continue;
+
+            const auto& sig = archetype->signature();
+            bool contains_all =
+                (sig.contains(ComponentRegistry::instance().type_id<Components>()) && ...);
+
+            if (!contains_all) continue;
+
+            for (const auto& chunk_ptr : archetype->chunks()) {
+                Chunk* chunk = chunk_ptr.get();
+                std::size_t count = chunk->size();
+
+                for (std::size_t row = 0; row < count; ++row) {
+                    fn(
+                        chunk->entity_ids[row],
+                        chunk->template get<Components>(row)...
+                    );
+                }
+            }
+        }
+    }
+
+
 private:
     std::vector<Archetype*> matched;
 };
